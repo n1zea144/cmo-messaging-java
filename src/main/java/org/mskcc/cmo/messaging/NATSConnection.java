@@ -16,10 +16,15 @@ public class NATSConnection {
     @Value("${nats.clientid}")
     private String clientID;
     
+    @Value("${nats.url}")
+    private String natsURL;
     
-    @Bean
+    
+    @SuppressWarnings("deprecation")
+	@Bean
     public StreamingConnection stanConnection() throws IOException, InterruptedException {
     	StreamingConnectionFactory cf = new StreamingConnectionFactory(clusterID, clientID);
+    	cf.setNatsUrl(natsURL);
     	StreamingConnection sc = cf.createConnection();
         return sc;
     }

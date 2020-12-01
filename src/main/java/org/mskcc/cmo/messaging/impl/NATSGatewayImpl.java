@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
+import org.mskcc.cmo.shared.SampleMetadata;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -30,52 +31,39 @@ public class NATSGatewayImpl implements Gateway {
     private StreamingConnection stanConnection;
 
     private Gson gson;
-    private Map<String, Subscription> subscribers;
-    private boolean initialized;
-
-
-    public NATSGatewayImpl(StreamingConnection natsConnection) {
-        this.stanConnection = stanConnection;
-        this.gson = new Gson();
-        this.subscribers = new HashMap<>();
-        this.initialized = (natsConnection != null);
-    }
+    private Map<String, Subscription> subscribers;    
 
     public NATSGatewayImpl() {
         this.gson = new Gson();
         this.subscribers = new HashMap<>();
-        this.initialized = (stanConnection != null);
     }
 
     @Override
     public void publish(String topic, Object message) throws Exception {
-        if (!initialized) return;
+        if (stanConnection == null) return;
         String msg = gson.toJson(message);
         stanConnection.publish(topic, msg.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
-    public void subscribe(String topic, Class messageClass, MessageConsumer consumer) throws Exception {
-    	if (!initialized) return;
+    public void subscribe(String topic, Class messageClass) throws Exception {
+    	if (stanConnection == null) return;
         if (!subscribers.containsKey(topic)) {
-        	final CountDownLatch doneSignal = new CountDownLatch(10);
+        	
         	Subscription sub = stanConnection.subscribe(topic, new MessageHandler() {
         		public void onMessage(Message m) {
                 	String json = new String(m.getData(), StandardCharsets.UTF_8);
                     Object message = gson.fromJson(json, messageClass);
-                    consumer.onMessage(message);
-                    doneSignal.countDown();
                 }
              }, new SubscriptionOptions.Builder().durableName(durableName).build());
-
+        	
             subscribers.put(topic, sub);
-            doneSignal.await();
         }
     }
 
     @Override
     public void shutdown() throws Exception {
-        if (initialized) {
+        if (stanConnection != null) {
             stanConnection.close();
         }
     }
