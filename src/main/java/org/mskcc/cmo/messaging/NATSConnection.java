@@ -1,22 +1,33 @@
 package org.mskcc.cmo.messaging;
 
-import io.nats.client.Connection;
-import io.nats.client.Nats;
 import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import io.nats.streaming.StreamingConnection;
+import io.nats.streaming.StreamingConnectionFactory;
+
 @Configuration
 public class NATSConnection {
 
-    @Value("${nats.connection_url}")
-    private String natsConnectionUrl;
+	@Value("${nats.clusterid}")
+	private String clusterID;
 
-    @Bean
-    public Connection natsConnection() throws IOException, InterruptedException {
-        Connection natsConnection = Nats.connect(natsConnectionUrl);
-        return natsConnection;
-    }
+	@Value("${nats.clientid}")
+	private String clientID;
+
+	@Value("${nats.url}")
+	private String natsURL;
+
+	@SuppressWarnings("deprecation")
+	@Bean
+	public StreamingConnection stanConnection() throws IOException, InterruptedException {
+		StreamingConnectionFactory cf = new StreamingConnectionFactory(clusterID, clientID);
+		cf.setNatsUrl(natsURL);
+		StreamingConnection sc = cf.createConnection();
+		return sc;
+	}
 
 }

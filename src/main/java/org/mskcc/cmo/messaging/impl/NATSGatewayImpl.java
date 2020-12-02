@@ -1,84 +1,74 @@
 package org.mskcc.cmo.messaging.impl;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
-
-import com.google.gson.Gson;
-import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Message;
-import io.nats.client.MessageHandler;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.google.gson.Gson;
+
+import io.nats.streaming.Message;
+import io.nats.streaming.MessageHandler;
+import io.nats.streaming.StreamingConnection;
+import io.nats.streaming.Subscription;
+import io.nats.streaming.SubscriptionOptions;
+
 @Component
 public class NATSGatewayImpl implements Gateway {
-    @Value("${nats.flush_duration:5}")
-    private Integer natsFlushDuration;
 
-    @Autowired
-    private Connection natsConnection;
+	@Value("${nats.flush_duration:5}")
+	private Integer natsFlushDuration;
 
-    private Gson gson;
-    private Map<String, Dispatcher> dispatchers;
-    private boolean initialized;
+	@Value("${nats.clientid}")
+	private String clientID;
 
+	@Autowired
+	private StreamingConnection stanConnection;
 
-    public NATSGatewayImpl(Connection natsConnection) {
-        this.natsConnection = natsConnection;
-        this.gson = new Gson();
-        this.dispatchers = new HashMap<>();
-        this.initialized = (natsConnection != null);
-    }
+	private Gson gson;
+	private Map<String, Subscription> subscribers;
 
-    public NATSGatewayImpl() {
-        this.gson = new Gson();
-        this.dispatchers = new HashMap<>();
-        this.initialized = (natsConnection != null);
-    }
+	public NATSGatewayImpl() {
+		this.gson = new Gson();
+		this.subscribers = new HashMap<>();
+	}
 
-    @Override
-    public void publish(String topic, Object message) throws Exception {
-        if (!initialized) return;
-        String msg = gson.toJson(message);
-        natsConnection.publish(topic, msg.getBytes(StandardCharsets.UTF_8));
-        natsConnection.flush(Duration.ofSeconds(natsFlushDuration));
-    }
+	@Override
+	public void publish(String topic, Object message) throws Exception {
+		if (stanConnection == null)
+			return;
+		String msg = gson.toJson(message);
+		stanConnection.publish(topic, msg.getBytes(StandardCharsets.UTF_8));
+	}
 
-    @Override
-    public void subscribe(String topic, Class messageClass, MessageConsumer consumer) throws Exception {
-        if (!initialized) return;
-        if (!dispatchers.containsKey(topic)) {
-            Dispatcher d = natsConnection.createDispatcher(new MessageHandler() {
-                @Override
-                public void onMessage(Message msg) throws InterruptedException {
-                    String json = new String(msg.getData(), StandardCharsets.UTF_8);
-                    Object message = gson.fromJson(json, messageClass);
-                    consumer.onMessage(message);
-                }
-            });
-            d.subscribe(topic);
-            dispatchers.put(topic, d);
-        }
-    }
+	@Override
+	public void subscribe(String topic, Class messageClass, MessageConsumer consumer) throws Exception {
+		if (stanConnection == null)
+			return;
+		if (!subscribers.containsKey(topic)) {
+			Subscription sub = stanConnection.subscribe(topic, new MessageHandler() {
+				@Override
+				public void onMessage(Message m) {
+					String json = new String(m.getData(), StandardCharsets.UTF_8);
+					Object message = gson.fromJson(json, messageClass);
+					consumer.onMessage(message);
+				}
+			}, new SubscriptionOptions.Builder().durableName(topic + "_" + clientID).build());
 
-    @Override
-    public Object request(String topic, Class messageClass) throws Exception {
-        if (!initialized) return null;
-        Message msg = natsConnection.request(topic, null, Duration.ofSeconds(natsFlushDuration));
-        String json = new String(msg.getData(), StandardCharsets.UTF_8);
-        return gson.fromJson(json, messageClass);
-    }
+			subscribers.put(topic, sub);
+		}
+	}
 
-    @Override
-    public void shutdown() throws Exception {
-        if (initialized) {
-            natsConnection.close();
-        }
-    }
+	@Override
+	public void shutdown() throws Exception {
+		if (stanConnection != null) {
+			stanConnection.close();
+		}
+	}
 
 }
