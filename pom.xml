@@ -14,17 +14,9 @@
     <relativePath />
     <!-- lookup parent from repository -->
   </parent>
-  <repositories>
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-  </repositories>
   <properties>
     <java.version>1.8</java.version>
     <maven.compiler.version>1.8</maven.compiler.version>
-    <metadb.shared.entities.groupId>com.github.ao508</metadb.shared.entities.groupId>
-    <metadb.shared.entities.version>3a9c4c21e62562f07a53734c717c796d7668f3d8</metadb.shared.entities.version>
   </properties>
   <dependencies>
     <dependency>
@@ -56,12 +48,6 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>2.8.6</version>
-    </dependency>
-    <!-- limsrest and metadb shared entities -->
-    <dependency>
-      <groupId>${metadb.shared.entities.groupId}</groupId>
-      <artifactId>cmo-metadb-shared-entities</artifactId>
-      <version>${metadb.shared.entities.version}</version>
     </dependency>
   </dependencies>
   <build>
