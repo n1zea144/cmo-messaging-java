@@ -1,0 +1,4 @@
+nats.clientid=bar
+nats.clusterid=test-cluster
+nats.durable_name=durable
+nats.url=nats://dashi-dev.cbio.mskcc.org:4222

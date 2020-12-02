@@ -3,16 +3,12 @@ package org.mskcc.cmo.messaging.impl;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 import org.mskcc.cmo.messaging.Gateway;
-import org.mskcc.cmo.messaging.MessageConsumer;
-import org.mskcc.cmo.shared.SampleMetadata;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.gson.Gson;
-import io.nats.streaming.Message;
 import io.nats.streaming.MessageHandler;
 import io.nats.streaming.StreamingConnection;
 import io.nats.streaming.Subscription;
@@ -46,16 +42,11 @@ public class NATSGatewayImpl implements Gateway {
     }
 
     @Override
-    public void subscribe(String topic, Class messageClass) throws Exception {
+    public void subscribe(String topic, MessageHandler messageHandler) throws Exception {
     	if (stanConnection == null) return;
         if (!subscribers.containsKey(topic)) {
-        	
-        	Subscription sub = stanConnection.subscribe(topic, new MessageHandler() {
-        		public void onMessage(Message m) {
-                	String json = new String(m.getData(), StandardCharsets.UTF_8);
-                    Object message = gson.fromJson(json, messageClass);
-                }
-             }, new SubscriptionOptions.Builder().durableName(durableName).build());
+        	Subscription sub = stanConnection.subscribe(topic, messageHandler
+        			, new SubscriptionOptions.Builder().durableName(durableName).build());
         	
             subscribers.put(topic, sub);
         }

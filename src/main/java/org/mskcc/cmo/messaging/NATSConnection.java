@@ -21,7 +21,7 @@ public class NATSConnection {
     
     
     @SuppressWarnings("deprecation")
-	@Bean
+    @Bean
     public StreamingConnection stanConnection() throws IOException, InterruptedException {
     	StreamingConnectionFactory cf = new StreamingConnectionFactory(clusterID, clientID);
     	cf.setNatsUrl(natsURL);
