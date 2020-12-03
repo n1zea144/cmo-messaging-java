@@ -129,12 +129,20 @@ public class NATSGatewayImpl implements Gateway {
         if (!subscribers.containsKey(topic)) {
             Subscription sub = stanConnection.subscribe(topic, new MessageHandler() {
                 @Override
-                public void onMessage(Message m) {
-                    String json = new String(m.getData(), StandardCharsets.UTF_8);
-                    Object message = gson.fromJson(json, messageClass);
-                    consumer.onMessage(message);
+                public void onMessage(Message msg) {
+                    Object message = null;
+                    try {
+                        String json = new String(msg.getData(), StandardCharsets.UTF_8);
+                        message = gson.fromJson(json, messageClass);
+                    } catch (Exception e) {
+                        System.err.printf("Error deserializing NATS message: %s\n", msg);
+                        System.err.printf("Exception: %s\n", e.getMessage());
+                    }
+                    if (message != null) {
+                        consumer.onMessage(message);
+                    }
                 }
-            }, new SubscriptionOptions.Builder().durableName(topic + "_" + clientID).build());
+            }, new SubscriptionOptions.Builder().durableName(topic + "-" + clientID).build());
             subscribers.put(topic, sub);
         }
     }
