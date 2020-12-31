@@ -46,11 +46,6 @@ public class NATSGatewayImpl implements Gateway {
     private final BlockingQueue<PublishingQueueTask> publishingQueue =
         new LinkedBlockingQueue<PublishingQueueTask>();
 
-    public boolean isConnected() {
-        return (stanConnection != null && stanConnection.getNatsConnection() != null
-                && (stanConnection.getNatsConnection().getStatus().CONNECTED.equals(Status.CONNECTED)));
-    }
-
     private class PublishingQueueTask {
         String topic;
         Object message;
@@ -123,6 +118,12 @@ public class NATSGatewayImpl implements Gateway {
         connFact = new StreamingConnectionFactory(opts);
         stanConnection = connFact.createConnection();
         exec.execute(new NATSPublisher());
+    }
+
+    @Override
+    public boolean isConnected() {
+        return (stanConnection != null && stanConnection.getNatsConnection() != null
+                && (stanConnection.getNatsConnection().getStatus().CONNECTED.equals(Status.CONNECTED)));
     }
 
     @Override
