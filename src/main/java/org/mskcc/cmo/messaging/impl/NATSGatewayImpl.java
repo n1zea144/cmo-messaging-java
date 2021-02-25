@@ -10,6 +10,7 @@ import io.nats.streaming.StreamingConnection;
 import io.nats.streaming.StreamingConnectionFactory;
 import io.nats.streaming.Subscription;
 import io.nats.streaming.SubscriptionOptions;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +21,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
+import org.mskcc.cmo.messaging.FileUtil;
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +39,9 @@ public class NATSGatewayImpl implements Gateway {
 
     @Value("${nats.url}")
     private String natsURL;
+
+    @Autowired
+    FileUtil fileUtil;
 
     private StreamingConnection stanConnection;
     private StreamingConnectionFactory connFact;
@@ -81,9 +87,13 @@ public class NATSGatewayImpl implements Gateway {
                         try {
                             sc.publish(task.topic, msg.getBytes(StandardCharsets.UTF_8));
                         } catch (Exception e) {
-                            // TBD requeue?
-                            LOG.error("Error publishing to topic: "
-                                    + task.topic + "\n Message: " + msg);
+                            try {
+                                fileUtil.savePublishFailureMessage(task.topic, msg);
+                            } catch (IOException exception) {
+                                exception.printStackTrace();
+                            }
+                            LOG.error("Error encountered during attempt to publish on topic: " + task.topic);
+                            LOG.debug("Message contents: " + msg);
                         }
                     }
                     if (interrupted && publishingQueue.isEmpty()) {
