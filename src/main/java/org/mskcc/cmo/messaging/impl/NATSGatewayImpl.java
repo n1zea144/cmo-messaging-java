@@ -1,6 +1,7 @@
 package org.mskcc.cmo.messaging.impl;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.nats.client.Connection.Status;
 import io.nats.streaming.Message;
 import io.nats.streaming.MessageHandler;
@@ -45,7 +46,7 @@ public class NATSGatewayImpl implements Gateway {
 
     private StreamingConnection stanConnection;
     private StreamingConnectionFactory connFact;
-    private final Gson gson = new Gson();
+    private final ObjectMapper mapper = new ObjectMapper();
     private final Map<String, Subscription> subscribers = new HashMap<String, Subscription>();
     private volatile boolean shutdownInitiated;
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
@@ -83,7 +84,7 @@ public class NATSGatewayImpl implements Gateway {
                 try {
                     PublishingQueueTask task = publishingQueue.poll(100, TimeUnit.MILLISECONDS);
                     if (task != null) {
-                        String msg = gson.toJson(task.message);
+                        String msg = mapper.writeValueAsString(task.message);
                         try {
                             sc.publish(task.topic, msg.getBytes(StandardCharsets.UTF_8));
                         } catch (Exception e) {
@@ -101,6 +102,8 @@ public class NATSGatewayImpl implements Gateway {
                     }
                 } catch (InterruptedException e) {
                     interrupted = true;
+                } catch (JsonProcessingException e) {
+                    LOG.error("Error parsing JSON from message", e);
                 }
             }
             try {
@@ -158,7 +161,7 @@ public class NATSGatewayImpl implements Gateway {
                     Object message = null;
                     try {
                         String json = new String(msg.getData(), StandardCharsets.UTF_8);
-                        message = gson.fromJson(json, messageClass);
+                        message = mapper.readValue(json, messageClass);
                     } catch (Exception e) {
                         LOG.error("Error deserializing NATS message: \n" + msg);
                         LOG.error("Exception: \n" + e.getMessage());
