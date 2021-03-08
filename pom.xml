@@ -14,11 +14,14 @@
     <relativePath />
     <!-- lookup parent from repository -->
   </parent>
+
   <properties>
     <java.version>1.8</java.version>
     <maven.compiler.version>1.8</maven.compiler.version>
     <slf4j.version>1.7.30</slf4j.version>
+    <jackson.version>2.11.2</jackson.version>
   </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -34,10 +37,11 @@
       <artifactId>java-nats-streaming</artifactId>
       <version>2.2.3</version>
     </dependency>
+    <!-- jackson -->
     <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.8.6</version>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
     </dependency>
     <!-- slf4j -->
     <dependency>
@@ -51,6 +55,7 @@
       <version>${slf4j.version}</version>
     </dependency>
   </dependencies>
+
   <build>
     <plugins>
       <plugin>
