@@ -21,7 +21,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.mskcc.cmo.messaging.FileUtil;
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
@@ -53,7 +54,8 @@ public class NATSGatewayImpl implements Gateway {
     private final CountDownLatch publishingShutdownLatch = new CountDownLatch(1);
     private final BlockingQueue<PublishingQueueTask> publishingQueue =
         new LinkedBlockingQueue<PublishingQueueTask>();
-    private Logger LOG = Logger.getLogger(NATSGatewayImpl.class);
+
+    private final Log LOG = LogFactory.getLog(NATSGatewayImpl.class);
 
     private class PublishingQueueTask {
         String topic;
