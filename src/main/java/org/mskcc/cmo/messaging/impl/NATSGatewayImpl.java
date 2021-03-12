@@ -97,7 +97,7 @@ public class NATSGatewayImpl implements Gateway {
                             LOG.debug("Message contents: " + msg);
                         }
                     }
-                    if (interrupted && publishingQueue.isEmpty()) {
+                    if ((interrupted || shutdownInitiated) && publishingQueue.isEmpty()) {
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -143,6 +143,9 @@ public class NATSGatewayImpl implements Gateway {
 
     @Override
     public boolean isConnected() {
+        if (stanConnection == null) {
+            return Boolean.FALSE;
+        }
         return (stanConnection != null && stanConnection.getNatsConnection() != null
                 && (stanConnection.getNatsConnection().getStatus().CONNECTED.equals(Status.CONNECTED)));
     }
