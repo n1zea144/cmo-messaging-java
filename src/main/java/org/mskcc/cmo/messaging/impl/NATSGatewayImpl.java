@@ -142,6 +142,17 @@ public class NATSGatewayImpl implements Gateway {
         stanConnection = connFact.createConnection();
         exec.execute(new NATSPublisher());
     }
+    @Override
+    public void connect(String clusterId, String clientId, String natsUrl) throws Exception {
+        Options opts = new Options.Builder()
+                .clientId(clientId)
+                .clusterId(clusterId)
+                .natsUrl(natsUrl)
+                .build();
+        connFact = new StreamingConnectionFactory(opts);
+        stanConnection = connFact.createConnection();
+        exec.execute(new NATSPublisher());
+    }
 
     @Override
     public boolean isConnected() {
