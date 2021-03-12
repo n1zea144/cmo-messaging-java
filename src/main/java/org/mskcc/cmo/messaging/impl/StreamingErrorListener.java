@@ -3,11 +3,12 @@ package org.mskcc.cmo.messaging.impl;
 import io.nats.client.Connection;
 import io.nats.client.Consumer;
 import io.nats.client.ErrorListener;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class StreamingErrorListener implements ErrorListener {
-    private Logger LOG = Logger.getLogger(StreamingErrorListener.class);
-    
+    private final Log LOG = LogFactory.getLog(StreamingErrorListener.class);
+
     /**
      * Handles server errors
      */
@@ -15,7 +16,7 @@ public class StreamingErrorListener implements ErrorListener {
     public void errorOccurred(Connection conn, String error) {
         LOG.error("The server notified the client with: " + error);
     }
-    
+
     /**
      * Handles connection errors
      */
