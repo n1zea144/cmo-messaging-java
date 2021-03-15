@@ -4,7 +4,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import org.mskcc.cmo.messaging.FileUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -37,9 +38,9 @@ public class NATSPublishingFileUtil implements FileUtil {
      * @return String
      */
     private String generatePublishFailureRecord(String topic, String message) {
-        Date now = new Date();
+        String currentDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
         StringBuilder builder = new StringBuilder();
-        builder.append(now.getTime())
+        builder.append(currentDate)
                 .append("\t")
                 .append(topic)
                 .append("\t")
