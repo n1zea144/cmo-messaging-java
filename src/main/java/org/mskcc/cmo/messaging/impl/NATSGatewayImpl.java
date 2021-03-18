@@ -11,8 +11,11 @@ import io.nats.streaming.StreamingConnection;
 import io.nats.streaming.StreamingConnectionFactory;
 import io.nats.streaming.Subscription;
 import io.nats.streaming.SubscriptionOptions;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -23,7 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.mskcc.cmo.messaging.FileUtil;
+import org.mskcc.cmo.common.FileUtil;
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,9 +45,13 @@ public class NATSGatewayImpl implements Gateway {
     @Value("${nats.url}")
     private String natsURL;
 
+    @Value("${metadb.publishing_failures_filepath}")
+    private String metadbPubFailuresFilepath;
+
     @Autowired
     FileUtil fileUtil;
 
+    private static final String PUB_FAILURES_FILE_HEADER = "DATE\tTOPIC\tMESSAGE\n";
     private StreamingConnection stanConnection;
     private StreamingConnectionFactory connFact;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -54,7 +61,6 @@ public class NATSGatewayImpl implements Gateway {
     private final CountDownLatch publishingShutdownLatch = new CountDownLatch(1);
     private final BlockingQueue<PublishingQueueTask> publishingQueue =
         new LinkedBlockingQueue<PublishingQueueTask>();
-
     private final Log LOG = LogFactory.getLog(NATSGatewayImpl.class);
 
     private class PublishingQueueTask {
@@ -91,7 +97,10 @@ public class NATSGatewayImpl implements Gateway {
                             sc.publish(task.topic, msg.getBytes(StandardCharsets.UTF_8));
                         } catch (Exception e) {
                             try {
-                                fileUtil.savePublishFailureMessage(task.topic, msg);
+                                File pubFailuresFile = fileUtil.getOrCreateFileWithHeader(
+                                        metadbPubFailuresFilepath, PUB_FAILURES_FILE_HEADER);
+                                fileUtil.writeToFile(pubFailuresFile,
+                                        generatePublishFailureRecord(task.topic, msg));
                             } catch (IOException exception) {
                                 exception.printStackTrace();
                             }
@@ -200,5 +209,23 @@ public class NATSGatewayImpl implements Gateway {
         shutdownInitiated = true;
         publishingShutdownLatch.await();
         stanConnection.close();
+    }
+
+    /**
+     * Generates record to write to publishing failure file.
+     * @param topic
+     * @param message
+     * @return String
+     */
+    private String generatePublishFailureRecord(String topic, String message) {
+        String currentDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        StringBuilder builder = new StringBuilder();
+        builder.append(currentDate)
+                .append("\t")
+                .append(topic)
+                .append("\t")
+                .append(message)
+                .append("\n");
+        return builder.toString();
     }
 }
