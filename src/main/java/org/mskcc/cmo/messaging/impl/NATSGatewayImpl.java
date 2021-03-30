@@ -24,11 +24,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLContext;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mskcc.cmo.common.FileUtil;
 import org.mskcc.cmo.messaging.Gateway;
 import org.mskcc.cmo.messaging.MessageConsumer;
+import org.mskcc.cmo.messaging.utils.SSLUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -36,11 +38,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class NATSGatewayImpl implements Gateway {
 
+    // TDB set to true after all clients are updated?
+    @Value("${nats.tls_channel:false}")
+    private boolean tlsChannel;
+
     @Value("${nats.clusterid}")
-    private String clusterID;
+    private String clusterId;
 
     @Value("${nats.clientid}")
-    private String clientID;
+    private String clientId;
 
     @Value("${nats.url}")
     private String natsURL;
@@ -50,6 +56,8 @@ public class NATSGatewayImpl implements Gateway {
 
     @Autowired
     FileUtil fileUtil;
+
+    @Autowired SSLUtils sslUtils;
 
     private static final String PUB_FAILURES_FILE_HEADER = "DATE\tTOPIC\tMESSAGE\n";
     private StreamingConnection stanConnection;
@@ -83,7 +91,7 @@ public class NATSGatewayImpl implements Gateway {
                     .errorListener(new StreamingErrorListener())
                     .natsConn(stanConnection.getNatsConnection())
                     .build();
-            this.sc = NatsStreaming.connect(clusterID, clientID + "-publisher", opts);
+            this.sc = NatsStreaming.connect(clusterId, clientId + "-publisher", opts);
         }
 
         @Override
@@ -142,22 +150,24 @@ public class NATSGatewayImpl implements Gateway {
 
     @Override
     public void connect() throws Exception {
-        Options opts = new Options.Builder()
-                .clientId(clientID)
-                .clusterId(clusterID)
-                .natsUrl(natsURL)
-                .build();
-        connFact = new StreamingConnectionFactory(opts);
-        stanConnection = connFact.createConnection();
-        exec.execute(new NATSPublisher());
+        connect(clusterId, clientId, natsURL);
     }
+
     @Override
     public void connect(String clusterId, String clientId, String natsUrl) throws Exception {
+        // setup nats connection w/SSL context if required
+        io.nats.client.Options.Builder builder = new io.nats.client.Options.Builder()
+            .server(natsURL);
+        if (tlsChannel) {
+            builder.sslContext(sslUtils.createSSLContext());
+        }
+        io.nats.client.Connection connection = io.nats.client.Nats.connect(builder.build());
+        // pass nats connection to stan options
         Options opts = new Options.Builder()
-                .clientId(clientId)
-                .clusterId(clusterId)
-                .natsUrl(natsUrl)
-                .build();
+            .clientId(clientId)
+            .clusterId(clusterId)
+            .natsConn(connection)
+            .build();
         connFact = new StreamingConnectionFactory(opts);
         stanConnection = connFact.createConnection();
         exec.execute(new NATSPublisher());
@@ -195,7 +205,7 @@ public class NATSGatewayImpl implements Gateway {
                         consumer.onMessage(message);
                     }
                 }
-            }, new SubscriptionOptions.Builder().durableName(topic + "-" + clientID).build());
+            }, new SubscriptionOptions.Builder().durableName(topic + "-" + clientId).build());
             subscribers.put(topic, sub);
         }
     }
